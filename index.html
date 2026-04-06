@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RAGNAR BOT - النظام المتكامل</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: linear-gradient(135deg, #0a0a1f 0%, #1a0033 50%, #0f0f2a 100%);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .container {
+            background: rgba(10, 10, 30, 0.85);
+            backdrop-filter: blur(20px);
+            border-radius: 30px;
+            padding: 40px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+            max-width: 600px;
+            width: 100%;
+        }
+        h1 { text-align: center; background: linear-gradient(135deg, #ff6a00, #7b2ff7); -webkit-background-clip: text; background-clip: text; color: transparent; margin-bottom: 20px; }
+        .input-group { margin-bottom: 20px; }
+        label { display: block; color: #00d4ff; margin-bottom: 8px; }
+        input { width: 100%; padding: 12px; background: rgba(0,0,0,0.6); border: 1px solid #7b2ff7; border-radius: 12px; color: white; }
+        button { width: 100%; padding: 14px; background: linear-gradient(135deg, #7b2ff7, #ff6a00); border: none; border-radius: 12px; color: white; font-weight: bold; cursor: pointer; margin-top: 10px; }
+        .switch { text-align: center; margin-top: 20px; color: #ff6a00; cursor: pointer; }
+        .card { background: rgba(0,0,0,0.5); border-radius: 20px; padding: 20px; margin-bottom: 20px; }
+        .stat { display: flex; justify-content: space-between; padding: 10px; background: rgba(255,106,0,0.1); border-radius: 10px; margin-bottom: 10px; }
+        .message { position: fixed; top: 20px; right: 20px; padding: 12px 20px; border-radius: 12px; z-index: 1000; }
+        .success { background: rgba(0,212,255,0.2); border: 1px solid #00d4ff; color: #00d4ff; }
+        .error { background: rgba(255,0,0,0.2); border: 1px solid red; color: red; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+<div class="container" id="app">
+    <h1>🪓 RAGNAR SYSTEM</h1>
+
+    <!-- شاشة تسجيل الدخول / التسجيل -->
+    <div id="authScreen">
+        <div id="loginForm">
+            <h3>🔐 تسجيل الدخول</h3>
+            <div class="input-group"><label>👤 اسم المستخدم</label><input type="text" id="loginUsername" placeholder="Username"></div>
+            <div class="input-group"><label>🔒 كلمة السر</label><input type="password" id="loginPassword" placeholder="Password"></div>
+            <button onclick="login()">دخول</button>
+            <div class="switch" onclick="showRegister()">ليس لديك حساب؟ سجل الآن</div>
+        </div>
+        <div id="registerForm" class="hidden">
+            <h3>📝 تسجيل جديد</h3>
+            <div class="input-group"><label>👤 اسم المستخدم</label><input type="text" id="regUsername" placeholder="Username"></div>
+            <div class="input-group"><label>🔒 كلمة السر</label><input type="password" id="regPassword" placeholder="Password"></div>
+            <div class="input-group"><label>🔑 مفتاح التفعيل (Key)</label><input type="text" id="regKey" placeholder="Key"></div>
+            <button onclick="register()">تسجيل</button>
+            <div class="switch" onclick="showLogin()">لديك حساب؟ سجل دخول</div>
+        </div>
+    </div>
+
+    <!-- لوحة تحكم المستخدم العادي -->
+    <div id="userPanel" class="hidden">
+        <h3>مرحباً <span id="userName"></span> 👋</h3>
+        <div class="card">
+            <h3>📊 إحصائيات بوتك</h3>
+            <div class="stat"><span>👥 المستخدمون المفعلون:</span><span id="userActiveUsers">0</span></div>
+            <div class="stat"><span>🎯 الحد الأقصى:</span><span id="userMaxUsers">0</span></div>
+        </div>
+        <div class="card">
+            <h3>⚙️ إعدادات بوتك</h3>
+            <div class="input-group"><label>🤖 Bot Token</label><input type="text" id="userBotToken" placeholder="ضع توكن البوت"></div>
+            <div class="input-group"><label>🔑 كلمة سر التفعيل</label><input type="text" id="userPassword" placeholder="كلمة سر المستخدمين"></div>
+            <div class="input-group"><label>📊 الحد الأقصى للمستخدمين</label><input type="number" id="userMaxInput" placeholder="100"></div>
+            <button onclick="updateUserBot()">💾 حفظ</button>
+            <button onclick="toggleUserBot()" id="userToggleBtn">▶️ تفعيل البوت</button>
+            <div class="stat" id="userBotStatus"></div>
+        </div>
+        <button onclick="logout()">🚪 خروج</button>
+    </div>
+
+    <!-- لوحة تحكم الماستر (أنت فقط) -->
+    <div id="masterPanel" class="hidden">
+        <h3>⚡ لوحة التحكم الرئيسية (MASTER)</h3>
+        <div class="card">
+            <h3>🔑 إنشاء مفتاح (Key) جديد</h3>
+            <button onclick="generateKey()">➕ إنشاء Key جديد</button>
+            <div id="newKeyDisplay" class="stat" style="margin-top:10px;"></div>
+        </div>
+        <div class="card">
+            <h3>📋 جميع المستخدمين المسجلين</h3>
+            <div id="usersList"></div>
+        </div>
+        <button onclick="logout()">🚪 خروج</button>
+    </div>
+</div>
+
+<script>
+    let currentUser = null;
+    let isMaster = false;
+
+    function showMessage(msg, type) { /* نفس الوظيفة */ 
+        const d = document.createElement('div'); d.className = `message ${type}`; d.innerText = msg; document.body.appendChild(d); setTimeout(()=>d.remove(),3000);
+    }
+
+    async function apiCall(endpoint, data) {
+        const res = await fetch(endpoint, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(data) });
+        return res.json();
+    }
+
+    async function register() {
+        const username = document.getElementById('regUsername').value;
+        const password = document.getElementById('regPassword').value;
+        const key = document.getElementById('regKey').value;
+        const res = await apiCall('/api/register', { username, password, key });
+        if(res.success) { showMessage('تم التسجيل بنجاح! يمكنك الدخول', 'success'); showLogin(); }
+        else showMessage(res.error, 'error');
+    }
+
+    async function login() {
+        const username = document.getElementById('loginUsername').value;
+        const password = document.getElementById('loginPassword').value;
+        const res = await apiCall('/api/login', { username, password });
+        if(res.success) {
+            currentUser = username;
+            isMaster = (username === 'MASTER');
+            if(isMaster) await loadMasterPanel();
+            else await loadUserPanel();
+            document.getElementById('authScreen').classList.add('hidden');
+            if(isMaster) document.getElementById('masterPanel').classList.remove('hidden');
+            else document.getElementById('userPanel').classList.remove('hidden');
+            showMessage(`مرحباً ${username}`, 'success');
+        } else showMessage(res.error, 'error');
+    }
+
+    async function loadUserPanel() {
+        const data = await apiCall('/api/get-user-data', { username: currentUser });
+        document.getElementById('userName').innerText = currentUser;
+        document.getElementById('userBotToken').value = data.token || '';
+        document.getElementById('userPassword').value = data.admin_password || '';
+        document.getElementById('userMaxInput').value = data.max_users || 100;
+        document.getElementById('userActiveUsers').innerText = data.active_users || 0;
+        document.getElementById('userMaxUsers').innerText = data.max_users || 100;
+        // حالة البوت
+    }
+
+    async function updateUserBot() {
+        const res = await apiCall('/api/update-user-bot', {
+            username: currentUser,
+            token: document.getElementById('userBotToken').value,
+            admin_password: document.getElementById('userPassword').value,
+            max_users: parseInt(document.getElementById('userMaxInput').value)
+        });
+        if(res.success) showMessage('تم الحفظ', 'success');
+        else showMessage('فشل', 'error');
+    }
+
+    async function toggleUserBot() {
+        const res = await apiCall('/api/toggle-user-bot', { username: currentUser });
+        if(res.success) showMessage(`البوت ${res.is_active ? 'مفعل' : 'معطل'}`, 'success');
+    }
+
+    async function loadMasterPanel() {
+        const data = await apiCall('/api/master-data', {});
+        let html = '';
+        for(let u of data.users) {
+            html += `<div class="stat"><span><b>${u.username}</b> (Token: ${u.token?.substring(0,10)}...)</span><span>مفعلين: ${u.active_users}/${u.max_users}</span></div>`;
+        }
+        document.getElementById('usersList').innerHTML = html || 'لا يوجد مستخدمين';
+    }
+
+    async function generateKey() {
+        const res = await apiCall('/api/generate-key', {});
+        document.getElementById('newKeyDisplay').innerHTML = `🔑 المفتاح الجديد: <b>${res.key}</b> (يستخدم مرة واحدة فقط)`;
+    }
+
+    function logout() { location.reload(); }
+    function showRegister() { document.getElementById('loginForm').classList.add('hidden'); document.getElementById('registerForm').classList.remove('hidden'); }
+    function showLogin() { document.getElementById('registerForm').classList.add('hidden'); document.getElementById('loginForm').classList.remove('hidden'); }
+</script>
+</body>
+  </html>
