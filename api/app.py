@@ -2,8 +2,9 @@ import json
 import os
 import secrets
 import datetime
-from flask import Flask, request, jsonify, session
+from flask import Flask, request, jsonify, session, make_response
 from flask_cors import CORS
+import re
 
 app = Flask(__name__)
 app.secret_key = 'RAGNAR-SECRET-KEY-2025'
@@ -12,11 +13,76 @@ CORS(app)
 DATA_FILE = '/tmp/users.json'
 KEYS_FILE = '/tmp/keys.json'
 
-# ========== بيانات المالك الجديدة ==========
+# ========== بيانات المالك ==========
 MASTER_USERNAME = "RAGNAR"
 MASTER_PASSWORD = "RAGNAR-WEB1"
-# ===========================================
 
+# ========== المفتاح الخاص بالبوت الخارجي ==========
+BOT_RUNNER_KEY = "RAGNAR-BOT-RUNNER-KEY-2025"
+
+# ========== قائمة البوتات المحظورة ==========
+BLOCKED_AGENTS = [
+    'python-requests', 'python-telegram-bot', 'TelegramBot',
+    'WebsiteDownloader', 'wget', 'curl', 'httpx',
+    'scrapy', 'beautifulsoup', 'selenium', 'phantomjs',
+    'bot', 'spider', 'crawler', 'scraper', 'download'
+]
+
+BLOCKED_IPS = []  # أضف الـ IPs التي تريد حظرها هنا
+
+# ========== منع البوتات مع استثناء البوت الخاص ==========
+@app.before_request
+def block_malicious_bots():
+    """منع البوتات الضارة مع السماح للبوت الخاص"""
+    
+    user_agent = request.headers.get('User-Agent', '')
+    ip = request.remote_addr
+    
+    # ✅ السماح للبوت الخاص (bot_runner.py) بالدخول
+    if request.path == '/api/bot-runner-data':
+        data = request.get_json(silent=True)
+        if data and data.get('key') == BOT_RUNNER_KEY:
+            return None
+    
+    if request.path == '/api/update-user-active':
+        data = request.get_json(silent=True)
+        if data and data.get('key') == BOT_RUNNER_KEY:
+            return None
+    
+    # حظر الـ IPs المحددة
+    if ip in BLOCKED_IPS:
+        return make_response("⛔ Access Denied", 403)
+    
+    # حظر الـ User-Agents المعروفة
+    for agent in BLOCKED_AGENTS:
+        if agent.lower() in user_agent.lower():
+            return make_response("⛔ Access Denied - Bot detected", 403)
+    
+    # حظر الطلبات التي لا تحتوي على User-Agent طبيعي
+    if not user_agent or len(user_agent) < 5:
+        return make_response("⛔ Invalid Request", 403)
+    
+    # السماح فقط للمتصفحات العادية (للملفات غير API)
+    if not request.path.startswith('/api/'):
+        allowed_browsers = ['Chrome', 'Firefox', 'Safari', 'Edge', 'Opera', 'Mobile']
+        is_browser = any(b in user_agent for b in allowed_browsers)
+        if not is_browser and not user_agent.startswith('Mozilla'):
+            return make_response("⛔ Access Denied", 403)
+    
+    return None
+
+# ========== إضافة رؤوس أمان ==========
+@app.after_request
+def add_security_headers(response):
+    """إضافة رؤوس أمان لمنع النسخ"""
+    response.headers['X-Robots-Tag'] = 'noindex, nofollow, noarchive, nosnippet'
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['X-Frame-Options'] = 'DENY'
+    response.headers['Referrer-Policy'] = 'no-referrer'
+    response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate'
+    return response
+
+# ========== دوال البيانات ==========
 def load_users():
     if os.path.exists(DATA_FILE):
         with open(DATA_FILE, 'r') as f:
@@ -41,6 +107,7 @@ def save_keys(keys):
     with open(KEYS_FILE, 'w') as f:
         json.dump(keys, f)
 
+# ========== API Routes ==========
 @app.route('/api/register', methods=['POST'])
 def register():
     data = request.json
@@ -78,7 +145,6 @@ def register():
     }
     save_users(users)
     
-    # ✅ حذف المفتاح بالكامل بعد استخدامه (وليس مجرد تعليمه كمستخدم)
     del keys[key]
     save_keys(keys)
     
@@ -90,7 +156,6 @@ def login():
     username = data.get('username')
     password = data.get('password')
     
-    # ✅ بيانات المالك الجديدة
     if username == MASTER_USERNAME and password == MASTER_PASSWORD:
         session['user'] = username
         session['is_master'] = True
@@ -227,7 +292,7 @@ def bot_runner_data():
     data = request.json
     key = data.get('key')
     
-    if key != "RAGNAR-BOT-RUNNER-KEY-2025":
+    if key != BOT_RUNNER_KEY:
         return jsonify({'error': 'Unauthorized'}), 401
     
     users = load_users()
@@ -251,7 +316,7 @@ def update_user_active():
     username = data.get('username')
     active_users = data.get('active_users', [])
     
-    if key != "RAGNAR-BOT-RUNNER-KEY-2025":
+    if key != BOT_RUNNER_KEY:
         return jsonify({'error': 'Unauthorized'}), 401
     
     users = load_users()
