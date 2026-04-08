@@ -21,7 +21,7 @@
             border-radius: 30px;
             padding: 40px;
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-            max-width: 700px;
+            max-width: 800px;
             width: 100%;
         }
         h1, h3 { text-align: center; margin-bottom: 20px; }
@@ -37,8 +37,10 @@
         .success { background: rgba(0,212,255,0.2); border: 1px solid #00d4ff; color: #00d4ff; }
         .error { background: rgba(255,0,0,0.2); border: 1px solid red; color: red; }
         .hidden { display: none; }
-        .key-item { background: rgba(255,106,0,0.2); padding: 8px; margin: 5px 0; border-radius: 8px; font-family: monospace; }
+        .key-item { background: rgba(255,106,0,0.2); padding: 8px; margin: 5px 0; border-radius: 8px; font-family: monospace; display: flex; justify-content: space-between; align-items: center; }
         .keys-container { max-height: 300px; overflow-y: auto; }
+        .delete-key { background: #ff0000; padding: 5px 10px; border-radius: 8px; cursor: pointer; font-size: 12px; }
+        .show-all-btn { background: linear-gradient(135deg, #00d4ff, #7b2ff7); margin-top: 10px; }
     </style>
 </head>
 <body>
@@ -64,17 +66,24 @@
         </div>
     </div>
 
-    <!-- لوحة تحكم الماستر -->
+    <!-- لوحة تحكم المالك (OWNER) -->
     <div id="masterPanel" class="hidden">
-        <h3>⚡ لوحة التحكم الرئيسية (MASTER)</h3>
+        <h3>⚡ لوحة التحكم الرئيسية (OWNER)</h3>
         <div class="card">
             <div class="stat"><span>🔑 المفاتيح المتبقية:</span><span id="keysCount">0</span></div>
-            <div class="stat"><span>📊 إجمالي المفاتيح:</span><span id="totalKeys">20</span></div>
-            <button onclick="refreshKeys()">🔄 تحديث</button>
+            <div class="stat"><span>📊 إجمالي المفاتيح:</span><span id="totalKeys">50</span></div>
+            <div class="input-group"><label>⏱️ مدة صلاحية المفتاح (أيام)</label><select id="keyExpiryDays"><option value="1">يوم واحد</option><option value="7" selected>7 أيام</option><option value="14">14 يوم</option><option value="30">30 يوم</option></select></div>
+            <button onclick="generateKey()">➕ إنشاء مفتاح جديد</button>
+            <button onclick="refreshKeys()" class="show-all-btn">🔍 عرض جميع المفاتيح (Show All)</button>
         </div>
         <div class="card">
-            <h3>🔑 المفاتيح المتاحة (Available Keys)</h3>
-            <div id="availableKeysList" class="keys-container"></div>
+            <h3>🔑 جميع المفاتيح (All Keys)</h3>
+            <div id="allKeysList" class="keys-container"></div>
+        </div>
+        <div class="card">
+            <h3>🔧 إعدادات المالك</h3>
+            <div class="input-group"><label>👑 تغيير كلمة سر المالك</label><input type="password" id="newMasterPassword" placeholder="كلمة سر جديدة"></div>
+            <button onclick="changeMasterPassword()">💾 تغيير كلمة السر</button>
         </div>
         <div class="card">
             <h3>📋 جميع المستخدمين المسجلين</h3>
@@ -90,6 +99,7 @@
             <h3>📊 إحصائيات بوتك</h3>
             <div class="stat"><span>👥 المستخدمون المفعلون:</span><span id="userActiveUsers">0</span></div>
             <div class="stat"><span>🎯 الحد الأقصى:</span><span id="userMaxUsers">0</span></div>
+            <div class="stat"><span>⏰ صلاحية البوت:</span><span id="userExpiry">غير محددة</span></div>
         </div>
         <div class="card">
             <h3>⚙️ إعدادات بوتك</h3>
@@ -117,8 +127,47 @@
     }
 
     async function apiCall(endpoint, data) {
-        const res = await fetch(endpoint, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(data) });
+        const res = await fetch(endpoint, { 
+            method: 'POST', 
+            headers: {'Content-Type':'application/json'}, 
+            body: JSON.stringify(data) 
+        });
         return res.json();
+    }
+
+    function generateRandomKey() {
+        const random = Math.floor(Math.random() * 1000000).toString().padStart(6, '0');
+        return `KEY-${random}`;
+    }
+
+    async function generateKey() {
+        const expiryDays = parseInt(document.getElementById('keyExpiryDays').value);
+        const newKey = generateRandomKey();
+        const res = await apiCall('/api/generate-key', { key: newKey, expiry_days: expiryDays });
+        if(res.success) {
+            showMessage(`✅ تم إنشاء المفتاح: ${newKey} (صلاحية ${expiryDays} يوم)`, 'success');
+            await refreshKeys();
+        } else showMessage('❌ فشل إنشاء المفتاح', 'error');
+    }
+
+    async function deleteKey(key) {
+        if(confirm(`هل تريد حذف المفتاح ${key}؟`)) {
+            const res = await apiCall('/api/delete-key', { key: key });
+            if(res.success) {
+                showMessage(`✅ تم حذف المفتاح ${key}`, 'success');
+                await refreshKeys();
+            } else showMessage('❌ فشل الحذف', 'error');
+        }
+    }
+
+    async function changeMasterPassword() {
+        const newPass = document.getElementById('newMasterPassword').value;
+        if(!newPass) { showMessage('❌ الرجاء إدخال كلمة سر جديدة', 'error'); return; }
+        const res = await apiCall('/api/change-master-password', { new_password: newPass });
+        if(res.success) {
+            showMessage('✅ تم تغيير كلمة سر المالك بنجاح', 'success');
+            document.getElementById('newMasterPassword').value = '';
+        } else showMessage('❌ فشل التغيير', 'error');
     }
 
     async function register() {
@@ -154,11 +203,18 @@
     }
 
     async function loadMasterPanel() {
-        const res = await apiCall('/api/get-keys', { username: 'MASTER', password: 'RAGNAR-TOP1' });
-        if(res.available_keys) {
+        const res = await apiCall('/api/get-all-keys', {});
+        if(res.keys) {
             let html = '';
-            res.available_keys.forEach(k => { html += `<div class="key-item">🔑 ${k}</div>`; });
-            document.getElementById('availableKeysList').innerHTML = html || 'لا يوجد مفاتيح متاحة';
+            res.keys.forEach(k => {
+                const expiryDate = k.expiry_date ? new Date(k.expiry_date).toLocaleDateString('ar') : 'غير محدد';
+                html += `<div class="key-item">
+                            🔑 ${k.key} 
+                            <span style="font-size:12px">(صلاحية: ${expiryDate})</span>
+                            <span class="delete-key" onclick="deleteKey('${k.key}')">🗑️ حذف</span>
+                         </div>`;
+            });
+            document.getElementById('allKeysList').innerHTML = html || 'لا توجد مفاتيح';
             document.getElementById('keysCount').innerText = res.available_count;
         }
         
@@ -166,7 +222,8 @@
         if(usersRes.users) {
             let usersHtml = '';
             usersRes.users.forEach(u => {
-                usersHtml += `<div class="stat"><span><b>${u.username}</b></span><span>Token: ${u.token?.substring(0,10)}... | مفعلين: ${u.active_users.length}/${u.max_users}</span></div>`;
+                const expiry = u.expiry_date ? new Date(u.expiry_date).toLocaleDateString('ar') : 'غير محدد';
+                usersHtml += `<div class="stat"><span><b>${u.username}</b></span><span>صلاحية: ${expiry}</span><span>مفعلين: ${u.active_users?.length || 0}/${u.max_users}</span></div>`;
             });
             document.getElementById('usersList').innerHTML = usersHtml || 'لا يوجد مستخدمين';
         }
@@ -180,6 +237,10 @@
         document.getElementById('userMaxInput').value = data.max_users || 100;
         document.getElementById('userActiveUsers').innerText = data.active_users || 0;
         document.getElementById('userMaxUsers').innerText = data.max_users || 100;
+        if(data.expiry_date) {
+            const expiryDate = new Date(data.expiry_date).toLocaleDateString('ar');
+            document.getElementById('userExpiry').innerHTML = `تنتهي في: ${expiryDate}`;
+        }
         updateUserBotStatus(data.is_active);
     }
 
