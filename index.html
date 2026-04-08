@@ -3,6 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex, nofollow, noarchive, nosnippet">
+    <meta name="googlebot" content="noindex, nofollow">
+    <meta name="referrer" content="no-referrer">
     <title>RAGNAR SYSTEM - Keys Management</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -47,7 +50,6 @@
 <div class="container" id="app">
     <h1>🪓 RAGNAR SYSTEM</h1>
 
-    <!-- شاشة تسجيل الدخول -->
     <div id="authScreen">
         <div id="loginForm">
             <h3>🔐 تسجيل الدخول</h3>
@@ -66,7 +68,6 @@
         </div>
     </div>
 
-    <!-- لوحة تحكم المالك (OWNER) -->
     <div id="masterPanel" class="hidden">
         <h3>⚡ لوحة التحكم الرئيسية (OWNER)</h3>
         <div class="card">
@@ -92,7 +93,6 @@
         <button onclick="logout()">🚪 خروج</button>
     </div>
 
-    <!-- لوحة تحكم المستخدم العادي -->
     <div id="userPanel" class="hidden">
         <h3>مرحباً <span id="userName"></span> 👋</h3>
         <div class="card">
