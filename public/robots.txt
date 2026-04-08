@@ -1,0 +1,18 @@
+User-agent: *
+Disallow: /
+Disallow: /api/
+
+User-agent: Googlebot
+Disallow: /
+
+User-agent: python-requests
+Disallow: /
+
+User-agent: TelegramBot
+Disallow: /
+
+User-agent: curl
+Disallow: /
+
+User-agent: wget
+Disallow: /
