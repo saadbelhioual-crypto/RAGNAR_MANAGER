@@ -45,8 +45,9 @@
         .delete-key { background: #ff0000; padding: 5px 10px; border-radius: 8px; cursor: pointer; font-size: 12px; }
         .show-all-btn { background: linear-gradient(135deg, #00d4ff, #7b2ff7); margin-top: 10px; }
         .timer { font-size: 24px; font-weight: bold; text-align: center; color: #ff6a00; margin: 10px 0; }
-        .free-key { background: linear-gradient(135deg, #00ff00, #008000); text-align: center; padding: 10px; border-radius: 12px; margin-bottom: 20px; }
-        .free-key span { color: white; font-weight: bold; }
+        .free-key-info { background: linear-gradient(135deg, #00ff00, #008000); text-align: center; padding: 10px; border-radius: 12px; margin-bottom: 20px; }
+        .free-key-info span { color: white; font-weight: bold; }
+        .warning-text { color: #ff6a00; font-size: 12px; margin-top: 5px; }
     </style>
 </head>
 <body>
@@ -63,12 +64,12 @@
         </div>
         <div id="registerForm" class="hidden">
             <h3>📝 تسجيل جديد</h3>
-            <div class="free-key">
-                <span>🎁 مفتاح مجاني للجميع: FREE-KEY (صلاحية 7 أيام)</span>
+            <div class="free-key-info">
+                <span>🎁 مفتاح مجاني: FREE-KEY (يستخدم مرة واحدة فقط - صلاحية 7 أيام)</span>
             </div>
             <div class="input-group"><label>👤 اسم المستخدم</label><input type="text" id="regUsername" placeholder="Username"></div>
             <div class="input-group"><label>🔒 كلمة السر</label><input type="password" id="regPassword" placeholder="Password"></div>
-            <div class="input-group"><label>🔑 المفتاح (Key)</label><input type="text" id="regKey" placeholder="أدخل المفتاح (FREE-KEY للجميع)"></div>
+            <div class="input-group"><label>🔑 المفتاح (Key)</label><input type="text" id="regKey" placeholder="أدخل المفتاح"></div>
             <button onclick="register()">تسجيل</button>
             <div class="switch" onclick="showLogin()">لديك حساب؟ سجل دخول</div>
         </div>
@@ -76,8 +77,8 @@
 
     <div id="masterPanel" class="hidden">
         <h3>⚡ لوحة التحكم الرئيسية (OWNER)</h3>
+        <div class="timer" id="ownerTimer">🕐 جاري التحميل...</div>
         <div class="card">
-            <div class="timer" id="ownerTimer">🕐 جاري التحميل...</div>
             <div class="stat"><span>🔑 المفاتيح المتبقية:</span><span id="keysCount">0</span></div>
             <div class="stat"><span>📊 إجمالي المفاتيح:</span><span id="totalKeys">50</span></div>
             <div class="input-group"><label>⏱️ مدة صلاحية المفتاح (أيام)</label><select id="keyExpiryDays"><option value="1">يوم واحد</option><option value="7" selected>7 أيام</option><option value="14">14 يوم</option><option value="30">30 يوم</option></select></div>
@@ -95,6 +96,15 @@
             <div class="input-group"><label>🤖 اسم بوت المالك</label><input type="text" id="ownerBotName" placeholder="@اسم_البوت"></div>
             <button onclick="changeMasterPassword()">💾 تغيير كلمة السر</button>
             <button onclick="updateOwnerInfo()">💾 حفظ معلومات المالك</button>
+        </div>
+        <div class="card">
+            <h3>⚙️ الإعدادات الافتراضية للبوت (تتغير عند جميع المستخدمين)</h3>
+            <div class="input-group"><label>🤖 Bot Token (افتراضي)</label><input type="text" id="defaultBotToken" placeholder="التوكن الافتراضي للجميع"></div>
+            <div class="input-group"><label>🔑 كلمة سر التفعيل (افتراضية)</label><input type="text" id="defaultAdminPassword" placeholder="كلمة سر التفعيل الافتراضية"></div>
+            <div class="input-group"><label>📊 الحد الأقصى للمستخدمين (افتراضي)</label><input type="number" id="defaultMaxUsers" placeholder="100"></div>
+            <div class="input-group"><label>🔘 حالة البوت (افتراضي)</label><select id="defaultIsActive"><option value="true">مفعل</option><option value="false" selected>معطل</option></select></div>
+            <button onclick="updateDefaultSettings()">💾 تطبيق الإعدادات على جميع المستخدمين</button>
+            <div class="warning-text">⚠️ تحذير: هذه الإعدادات ستتغير عند جميع المستخدمين المسجلين!</div>
         </div>
         <div class="card">
             <h3>📝 تعديل رسائل البوت</h3>
@@ -118,13 +128,14 @@
             <div class="stat"><span>⏰ صلاحية البوت:</span><span id="userExpiry">غير محددة</span></div>
         </div>
         <div class="card">
-            <h3>⚙️ إعدادات بوتك</h3>
+            <h3>⚙️ إعدادات بوتك (خاصة بك فقط)</h3>
             <div class="input-group"><label>🤖 Bot Token</label><input type="text" id="userBotToken" placeholder="ضع توكن البوت"></div>
             <div class="input-group"><label>🔑 كلمة سر التفعيل للمستخدمين</label><input type="text" id="userPassword" placeholder="كلمة سر التفعيل"></div>
             <div class="input-group"><label>📊 الحد الأقصى للمستخدمين</label><input type="number" id="userMaxInput" placeholder="100"></div>
-            <button onclick="updateUserBot()">💾 حفظ</button>
+            <button onclick="updateUserBot()">💾 حفظ (خاص بك فقط)</button>
             <button onclick="toggleUserBot()" id="userToggleBtn">▶️ تفعيل البوت</button>
             <div class="stat" id="userBotStatus"></div>
+            <div class="warning-text">💡 ملاحظة: هذه الإعدادات خاصة بك فقط. يمكنك تغييرها دون التأثير على الآخرين.</div>
         </div>
         <button onclick="logout()">🚪 خروج</button>
     </div>
@@ -205,13 +216,28 @@
         } else showMessage('❌ فشل الحفظ', 'error');
     }
 
+    async function updateDefaultSettings() {
+        const token = document.getElementById('defaultBotToken').value;
+        const admin_password = document.getElementById('defaultAdminPassword').value;
+        const max_users = parseInt(document.getElementById('defaultMaxUsers').value);
+        const is_active = document.getElementById('defaultIsActive').value === 'true';
+        
+        const res = await apiCall('/api/update-default-settings', { 
+            token, admin_password, max_users, is_active 
+        });
+        if(res.success) {
+            showMessage('✅ تم تطبيق الإعدادات على جميع المستخدمين', 'success');
+        } else showMessage('❌ فشل التطبيق', 'error');
+    }
+
     async function register() {
         const username = document.getElementById('regUsername').value;
         const password = document.getElementById('regPassword').value;
         let key = document.getElementById('regKey').value;
         
-        if(key === 'FREE-KEY' || key === '') {
-            key = 'FREE-KEY';
+        if(!key) {
+            showMessage('❌ الرجاء إدخال المفتاح', 'error');
+            return;
         }
         
         const res = await apiCall('/api/register', { username, password, key });
@@ -231,6 +257,12 @@
             if(isMaster) {
                 document.getElementById('keysCount').innerText = res.available_keys;
                 document.getElementById('totalKeys').innerText = res.total_keys;
+                if(res.default_settings) {
+                    document.getElementById('defaultBotToken').value = res.default_settings.token || '';
+                    document.getElementById('defaultAdminPassword').value = res.default_settings.admin_password || '';
+                    document.getElementById('defaultMaxUsers').value = res.default_settings.max_users || 100;
+                    document.getElementById('defaultIsActive').value = res.default_settings.is_active ? 'true' : 'false';
+                }
                 await loadMasterPanel();
                 document.getElementById('masterPanel').classList.remove('hidden');
                 startOwnerTimer(res.owner_expiry);
@@ -301,6 +333,12 @@
             document.getElementById('ownerBotName').value = ownerInfo.owner_bot_name || '';
             document.getElementById('welcomeMessage').value = ownerInfo.welcome_message || '';
             document.getElementById('helpMessage').value = ownerInfo.help_message || '';
+            if(ownerInfo.default_settings) {
+                document.getElementById('defaultBotToken').value = ownerInfo.default_settings.token || '';
+                document.getElementById('defaultAdminPassword').value = ownerInfo.default_settings.admin_password || '';
+                document.getElementById('defaultMaxUsers').value = ownerInfo.default_settings.max_users || 100;
+                document.getElementById('defaultIsActive').value = ownerInfo.default_settings.is_active ? 'true' : 'false';
+            }
         }
     }
 
@@ -326,7 +364,7 @@
             admin_password: document.getElementById('userPassword').value,
             max_users: parseInt(document.getElementById('userMaxInput').value)
         });
-        if(res.success) showMessage('✅ تم الحفظ', 'success');
+        if(res.success) showMessage('✅ تم حفظ إعداداتك الخاصة', 'success');
         else showMessage('فشل', 'error');
     }
 
