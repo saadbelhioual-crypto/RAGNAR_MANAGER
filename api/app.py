@@ -15,6 +15,7 @@ KEYS_FILE = '/tmp/keys.json'
 MESSAGES_FILE = '/tmp/messages.json'
 OWNER_FILE = '/tmp/owner.json'
 DEFAULT_SETTINGS_FILE = '/tmp/default_settings.json'
+USER_MESSAGES_FILE = '/tmp/user_messages.json'
 
 # ========== بيانات المالك ==========
 MASTER_USERNAME = "RAGNAR"
@@ -23,26 +24,10 @@ MASTER_EXPIRY = (datetime.datetime.now() + datetime.timedelta(days=365)).isoform
 
 # ========== المفتاح المجاني (لجميع المستخدمين) ==========
 FREE_KEY = "FREE-KEY"
-FREE_KEY_DURATION_DAYS = 7  # مدة الصلاحية 7 أيام من تاريخ التسجيل
+FREE_KEY_DURATION_DAYS = 7
 
 # ========== المفتاح الخاص بالبوت الخارجي ==========
 BOT_RUNNER_KEY = "RAGNAR-BOT-RUNNER-KEY-2025"
-
-# ========== الإعدادات الافتراضية (يغيرها المالك) ==========
-def load_default_settings():
-    if os.path.exists(DEFAULT_SETTINGS_FILE):
-        with open(DEFAULT_SETTINGS_FILE, 'r') as f:
-            return json.load(f)
-    return {
-        'token': '',
-        'admin_password': 'X1R_RAGNAR',
-        'max_users': 100,
-        'is_active': False
-    }
-
-def save_default_settings(settings):
-    with open(DEFAULT_SETTINGS_FILE, 'w') as f:
-        json.dump(settings, f)
 
 # ========== قائمة البوتات المحظورة ==========
 BLOCKED_AGENTS = [
@@ -54,6 +39,7 @@ BLOCKED_AGENTS = [
 
 BLOCKED_IPS = []
 
+# ========== دوال تحميل وحفظ البيانات ==========
 def load_users():
     if os.path.exists(DATA_FILE):
         with open(DATA_FILE, 'r') as f:
@@ -91,6 +77,21 @@ def save_messages(messages):
     with open(MESSAGES_FILE, 'w') as f:
         json.dump(messages, f)
 
+def load_default_settings():
+    if os.path.exists(DEFAULT_SETTINGS_FILE):
+        with open(DEFAULT_SETTINGS_FILE, 'r') as f:
+            return json.load(f)
+    return {
+        'token': '',
+        'admin_password': 'X1R_RAGNAR',
+        'max_users': 100,
+        'is_active': False
+    }
+
+def save_default_settings(settings):
+    with open(DEFAULT_SETTINGS_FILE, 'w') as f:
+        json.dump(settings, f)
+
 def load_owner_info():
     if os.path.exists(OWNER_FILE):
         with open(OWNER_FILE, 'r') as f:
@@ -105,6 +106,18 @@ def save_owner_info(info):
     with open(OWNER_FILE, 'w') as f:
         json.dump(info, f)
 
+# ========== رسائل المستخدمين الخاصة ==========
+def load_user_messages():
+    if os.path.exists(USER_MESSAGES_FILE):
+        with open(USER_MESSAGES_FILE, 'r') as f:
+            return json.load(f)
+    return {}
+
+def save_user_messages(messages):
+    with open(USER_MESSAGES_FILE, 'w') as f:
+        json.dump(messages, f)
+
+# ========== منع البوتات ==========
 @app.before_request
 def block_malicious_bots():
     user_agent = request.headers.get('User-Agent', '')
@@ -147,6 +160,7 @@ def add_security_headers(response):
     response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate'
     return response
 
+# ========== API Routes ==========
 @app.route('/api/register', methods=['POST'])
 def register():
     data = request.json
@@ -160,12 +174,9 @@ def register():
     if username in users:
         return jsonify({'success': False, 'error': 'الاسم موجود'})
     
-    # جلب الإعدادات الافتراضية
     default_settings = load_default_settings()
     
-    # ✅ معالجة المفتاح المجاني (لجميع المستخدمين)
     if key == FREE_KEY:
-        # حساب تاريخ الانتهاء (7 أيام من اليوم)
         expiry_date = (datetime.datetime.now() + datetime.timedelta(days=FREE_KEY_DURATION_DAYS)).isoformat()
         
         users[username] = {
@@ -182,7 +193,6 @@ def register():
         save_users(users)
         return jsonify({'success': True})
     
-    # ✅ معالجة المفاتيح العادية (مرة واحدة فقط)
     if key not in keys:
         return jsonify({'success': False, 'error': 'مفتاح غير صالح'})
     
@@ -208,7 +218,6 @@ def register():
     }
     save_users(users)
     
-    # استهلاك المفتاح العادي
     keys[key]['used'] = True
     save_keys(keys)
     
@@ -357,9 +366,39 @@ def update_messages():
     save_messages(messages)
     return jsonify({'success': True})
 
+@app.route('/api/update-user-messages', methods=['POST'])
+def update_user_messages():
+    data = request.json
+    username = data.get('username')
+    welcome_message = data.get('welcome_message')
+    help_message = data.get('help_message')
+    
+    user_messages = load_user_messages()
+    if username not in user_messages:
+        user_messages[username] = {}
+    if welcome_message:
+        user_messages[username]['welcome_message'] = welcome_message
+    if help_message:
+        user_messages[username]['help_message'] = help_message
+    save_user_messages(user_messages)
+    
+    return jsonify({'success': True})
+
+@app.route('/api/get-user-messages', methods=['POST'])
+def get_user_messages():
+    data = request.json
+    username = data.get('username')
+    
+    user_messages = load_user_messages()
+    default_messages = load_messages()
+    
+    return jsonify({
+        'welcome_message': user_messages.get(username, {}).get('welcome_message', default_messages.get('welcome_message', '')),
+        'help_message': user_messages.get(username, {}).get('help_message', default_messages.get('help_message', ''))
+    })
+
 @app.route('/api/update-default-settings', methods=['POST'])
 def update_default_settings():
-    """تحديث الإعدادات الافتراضية (تتغير عند جميع المستخدمين)"""
     if not session.get('is_master'):
         return jsonify({'error': 'Unauthorized'}), 401
     
@@ -377,7 +416,6 @@ def update_default_settings():
     
     save_default_settings(default_settings)
     
-    # تحديث جميع المستخدمين الحاليين
     users = load_users()
     changed_count = 0
     for username, user_data in users.items():
@@ -422,7 +460,6 @@ def get_user_data():
 
 @app.route('/api/update-user-bot', methods=['POST'])
 def update_user_bot():
-    """تحديث إعدادات المستخدم الفردي (لا تؤثر على الآخرين)"""
     data = request.json
     username = data.get('username')
     users = load_users()
