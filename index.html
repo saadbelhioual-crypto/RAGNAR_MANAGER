@@ -65,11 +65,11 @@
         <div id="registerForm" class="hidden">
             <h3>📝 تسجيل جديد</h3>
             <div class="free-key-info">
-                <span>🎁 مفتاح مجاني: FREE-KEY (يستخدم مرة واحدة فقط - صلاحية 7 أيام)</span>
+                <span>🎁 مفتاح مجاني للجميع: FREE-KEY (صلاحية 7 أيام من تاريخ التسجيل)</span>
             </div>
             <div class="input-group"><label>👤 اسم المستخدم</label><input type="text" id="regUsername" placeholder="Username"></div>
             <div class="input-group"><label>🔒 كلمة السر</label><input type="password" id="regPassword" placeholder="Password"></div>
-            <div class="input-group"><label>🔑 المفتاح (Key)</label><input type="text" id="regKey" placeholder="أدخل المفتاح"></div>
+            <div class="input-group"><label>🔑 المفتاح (Key)</label><input type="text" id="regKey" placeholder="أدخل المفتاح أو FREE-KEY"></div>
             <button onclick="register()">تسجيل</button>
             <div class="switch" onclick="showLogin()">لديك حساب؟ سجل دخول</div>
         </div>
@@ -80,7 +80,7 @@
         <div class="timer" id="ownerTimer">🕐 جاري التحميل...</div>
         <div class="card">
             <div class="stat"><span>🔑 المفاتيح المتبقية:</span><span id="keysCount">0</span></div>
-            <div class="stat"><span>📊 إجمالي المفاتيح:</span><span id="totalKeys">50</span></div>
+            <div class="stat"><span>📊 إجمالي المفاتيح:</span><span id="totalKeys">0</span></div>
             <div class="input-group"><label>⏱️ مدة صلاحية المفتاح (أيام)</label><select id="keyExpiryDays"><option value="1">يوم واحد</option><option value="7" selected>7 أيام</option><option value="14">14 يوم</option><option value="30">30 يوم</option></select></div>
             <button onclick="generateKey()">➕ إنشاء مفتاح جديد</button>
             <button onclick="refreshKeys()" class="show-all-btn">🔍 عرض جميع المفاتيح (Show All)</button>
@@ -226,7 +226,7 @@
             token, admin_password, max_users, is_active 
         });
         if(res.success) {
-            showMessage('✅ تم تطبيق الإعدادات على جميع المستخدمين', 'success');
+            showMessage(`✅ تم تطبيق الإعدادات على جميع المستخدمين (تم تحديث ${res.updated_users || 0} مستخدم)`, 'success');
         } else showMessage('❌ فشل التطبيق', 'error');
     }
 
