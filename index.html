@@ -6,7 +6,7 @@
     <meta name="robots" content="noindex, nofollow, noarchive, nosnippet">
     <meta name="googlebot" content="noindex, nofollow">
     <meta name="referrer" content="no-referrer">
-    <title>RAGNAR SYSTEM - Keys Management</title>
+    <title>RAGNAR x STRAVEX - Keys Management</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -31,7 +31,7 @@
         h1 { background: linear-gradient(135deg, #ff6a00, #7b2ff7); -webkit-background-clip: text; background-clip: text; color: transparent; }
         .input-group { margin-bottom: 20px; }
         label { display: block; color: #00d4ff; margin-bottom: 8px; }
-        input, select { width: 100%; padding: 12px; background: rgba(0,0,0,0.6); border: 1px solid #7b2ff7; border-radius: 12px; color: white; }
+        input, select, textarea { width: 100%; padding: 12px; background: rgba(0,0,0,0.6); border: 1px solid #7b2ff7; border-radius: 12px; color: white; }
         button { width: 100%; padding: 14px; background: linear-gradient(135deg, #7b2ff7, #ff6a00); border: none; border-radius: 12px; color: white; font-weight: bold; cursor: pointer; margin-top: 10px; }
         .switch { text-align: center; margin-top: 20px; color: #ff6a00; cursor: pointer; }
         .card { background: rgba(0,0,0,0.5); border-radius: 20px; padding: 20px; margin-bottom: 20px; }
@@ -44,11 +44,14 @@
         .keys-container { max-height: 300px; overflow-y: auto; }
         .delete-key { background: #ff0000; padding: 5px 10px; border-radius: 8px; cursor: pointer; font-size: 12px; }
         .show-all-btn { background: linear-gradient(135deg, #00d4ff, #7b2ff7); margin-top: 10px; }
+        .timer { font-size: 24px; font-weight: bold; text-align: center; color: #ff6a00; margin: 10px 0; }
+        .free-key { background: linear-gradient(135deg, #00ff00, #008000); text-align: center; padding: 10px; border-radius: 12px; margin-bottom: 20px; }
+        .free-key span { color: white; font-weight: bold; }
     </style>
 </head>
 <body>
 <div class="container" id="app">
-    <h1>🪓 RAGNAR SYSTEM</h1>
+    <h1>🪓 RAGNAR x STRAVEX 🐺</h1>
 
     <div id="authScreen">
         <div id="loginForm">
@@ -60,9 +63,12 @@
         </div>
         <div id="registerForm" class="hidden">
             <h3>📝 تسجيل جديد</h3>
+            <div class="free-key">
+                <span>🎁 مفتاح مجاني للجميع: FREE-KEY (صلاحية 7 أيام)</span>
+            </div>
             <div class="input-group"><label>👤 اسم المستخدم</label><input type="text" id="regUsername" placeholder="Username"></div>
             <div class="input-group"><label>🔒 كلمة السر</label><input type="password" id="regPassword" placeholder="Password"></div>
-            <div class="input-group"><label>🔑 المفتاح (Key)</label><input type="text" id="regKey" placeholder="أدخل المفتاح"></div>
+            <div class="input-group"><label>🔑 المفتاح (Key)</label><input type="text" id="regKey" placeholder="أدخل المفتاح (FREE-KEY للجميع)"></div>
             <button onclick="register()">تسجيل</button>
             <div class="switch" onclick="showLogin()">لديك حساب؟ سجل دخول</div>
         </div>
@@ -71,6 +77,7 @@
     <div id="masterPanel" class="hidden">
         <h3>⚡ لوحة التحكم الرئيسية (OWNER)</h3>
         <div class="card">
+            <div class="timer" id="ownerTimer">🕐 جاري التحميل...</div>
             <div class="stat"><span>🔑 المفاتيح المتبقية:</span><span id="keysCount">0</span></div>
             <div class="stat"><span>📊 إجمالي المفاتيح:</span><span id="totalKeys">50</span></div>
             <div class="input-group"><label>⏱️ مدة صلاحية المفتاح (أيام)</label><select id="keyExpiryDays"><option value="1">يوم واحد</option><option value="7" selected>7 أيام</option><option value="14">14 يوم</option><option value="30">30 يوم</option></select></div>
@@ -84,7 +91,16 @@
         <div class="card">
             <h3>🔧 إعدادات المالك</h3>
             <div class="input-group"><label>👑 تغيير كلمة سر المالك</label><input type="password" id="newMasterPassword" placeholder="كلمة سر جديدة"></div>
+            <div class="input-group"><label>🆔 أيدي المالك (Telegram ID)</label><input type="text" id="ownerId" placeholder="أيدي المالك"></div>
+            <div class="input-group"><label>🤖 اسم بوت المالك</label><input type="text" id="ownerBotName" placeholder="@اسم_البوت"></div>
             <button onclick="changeMasterPassword()">💾 تغيير كلمة السر</button>
+            <button onclick="updateOwnerInfo()">💾 حفظ معلومات المالك</button>
+        </div>
+        <div class="card">
+            <h3>📝 تعديل رسائل البوت</h3>
+            <div class="input-group"><label>📨 رسالة الترحيب (/start)</label><textarea id="welcomeMessage" rows="3" placeholder="رسالة الترحيب"></textarea></div>
+            <div class="input-group"><label>📨 رسالة المساعدة (/help)</label><textarea id="helpMessage" rows="3" placeholder="رسالة المساعدة"></textarea></div>
+            <button onclick="updateMessages()">💾 حفظ الرسائل</button>
         </div>
         <div class="card">
             <h3>📋 جميع المستخدمين المسجلين</h3>
@@ -117,6 +133,7 @@
 <script>
     let currentUser = null;
     let isMaster = false;
+    let expiryInterval = null;
 
     function showMessage(msg, type) {
         const d = document.createElement('div');
@@ -170,10 +187,33 @@
         } else showMessage('❌ فشل التغيير', 'error');
     }
 
+    async function updateOwnerInfo() {
+        const ownerId = document.getElementById('ownerId').value;
+        const ownerBotName = document.getElementById('ownerBotName').value;
+        const res = await apiCall('/api/update-owner-info', { owner_id: ownerId, owner_bot_name: ownerBotName });
+        if(res.success) {
+            showMessage('✅ تم حفظ معلومات المالك', 'success');
+        } else showMessage('❌ فشل الحفظ', 'error');
+    }
+
+    async function updateMessages() {
+        const welcomeMessage = document.getElementById('welcomeMessage').value;
+        const helpMessage = document.getElementById('helpMessage').value;
+        const res = await apiCall('/api/update-messages', { welcome_message: welcomeMessage, help_message: helpMessage });
+        if(res.success) {
+            showMessage('✅ تم حفظ الرسائل', 'success');
+        } else showMessage('❌ فشل الحفظ', 'error');
+    }
+
     async function register() {
         const username = document.getElementById('regUsername').value;
         const password = document.getElementById('regPassword').value;
-        const key = document.getElementById('regKey').value;
+        let key = document.getElementById('regKey').value;
+        
+        if(key === 'FREE-KEY' || key === '') {
+            key = 'FREE-KEY';
+        }
+        
         const res = await apiCall('/api/register', { username, password, key });
         if(res.success) {
             showMessage('✅ تم التسجيل بنجاح! يمكنك الدخول', 'success');
@@ -193,6 +233,7 @@
                 document.getElementById('totalKeys').innerText = res.total_keys;
                 await loadMasterPanel();
                 document.getElementById('masterPanel').classList.remove('hidden');
+                startOwnerTimer(res.owner_expiry);
             } else {
                 await loadUserPanel();
                 document.getElementById('userPanel').classList.remove('hidden');
@@ -200,6 +241,32 @@
             document.getElementById('authScreen').classList.add('hidden');
             showMessage(`مرحباً ${username}`, 'success');
         } else showMessage(res.error, 'error');
+    }
+
+    function startOwnerTimer(expiryDate) {
+        if(expiryInterval) clearInterval(expiryInterval);
+        
+        function updateTimer() {
+            const now = new Date().getTime();
+            const expiry = new Date(expiryDate).getTime();
+            const remaining = expiry - now;
+            
+            if(remaining <= 0) {
+                document.getElementById('ownerTimer').innerHTML = '⚠️ صلاحية المالك انتهت!';
+                if(expiryInterval) clearInterval(expiryInterval);
+                return;
+            }
+            
+            const days = Math.floor(remaining / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((remaining % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const minutes = Math.floor((remaining % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((remaining % (1000 * 60)) / 1000);
+            
+            document.getElementById('ownerTimer').innerHTML = `⏰ المتبقي: ${days} يوم ${hours} ساعة ${minutes} دقيقة ${seconds} ثانية`;
+        }
+        
+        updateTimer();
+        expiryInterval = setInterval(updateTimer, 1000);
     }
 
     async function loadMasterPanel() {
@@ -226,6 +293,14 @@
                 usersHtml += `<div class="stat"><span><b>${u.username}</b></span><span>صلاحية: ${expiry}</span><span>مفعلين: ${u.active_users?.length || 0}/${u.max_users}</span></div>`;
             });
             document.getElementById('usersList').innerHTML = usersHtml || 'لا يوجد مستخدمين';
+        }
+        
+        const ownerInfo = await apiCall('/api/get-owner-info', {});
+        if(ownerInfo) {
+            document.getElementById('ownerId').value = ownerInfo.owner_id || '';
+            document.getElementById('ownerBotName').value = ownerInfo.owner_bot_name || '';
+            document.getElementById('welcomeMessage').value = ownerInfo.welcome_message || '';
+            document.getElementById('helpMessage').value = ownerInfo.help_message || '';
         }
     }
 
@@ -280,7 +355,10 @@
         showMessage('✅ تم تحديث المفاتيح', 'success');
     }
 
-    function logout() { location.reload(); }
+    function logout() { 
+        if(expiryInterval) clearInterval(expiryInterval);
+        location.reload(); 
+    }
     function showRegister() { document.getElementById('loginForm').classList.add('hidden'); document.getElementById('registerForm').classList.remove('hidden'); }
     function showLogin() { document.getElementById('registerForm').classList.add('hidden'); document.getElementById('loginForm').classList.remove('hidden'); }
 </script>
