@@ -16,13 +16,14 @@ MESSAGES_FILE = '/tmp/messages.json'
 OWNER_FILE = '/tmp/owner.json'
 DEFAULT_SETTINGS_FILE = '/tmp/default_settings.json'
 USER_MESSAGES_FILE = '/tmp/user_messages.json'
+USER_SETTINGS_FILE = '/tmp/user_settings.json'
 
 # ========== بيانات المالك ==========
 MASTER_USERNAME = "RAGNAR"
 MASTER_PASSWORD = "RAGNAR-WEB1"
 MASTER_EXPIRY = (datetime.datetime.now() + datetime.timedelta(days=365)).isoformat()
 
-# ========== المفتاح المجاني (لجميع المستخدمين) ==========
+# ========== المفتاح المجاني ==========
 FREE_KEY = "FREE-KEY"
 FREE_KEY_DURATION_DAYS = 7
 
@@ -106,7 +107,6 @@ def save_owner_info(info):
     with open(OWNER_FILE, 'w') as f:
         json.dump(info, f)
 
-# ========== رسائل المستخدمين الخاصة ==========
 def load_user_messages():
     if os.path.exists(USER_MESSAGES_FILE):
         with open(USER_MESSAGES_FILE, 'r') as f:
@@ -116,6 +116,16 @@ def load_user_messages():
 def save_user_messages(messages):
     with open(USER_MESSAGES_FILE, 'w') as f:
         json.dump(messages, f)
+
+def load_user_settings():
+    if os.path.exists(USER_SETTINGS_FILE):
+        with open(USER_SETTINGS_FILE, 'r') as f:
+            return json.load(f)
+    return {}
+
+def save_user_settings(settings):
+    with open(USER_SETTINGS_FILE, 'w') as f:
+        json.dump(settings, f)
 
 # ========== منع البوتات ==========
 @app.before_request
@@ -352,6 +362,37 @@ def get_owner_info():
         'default_settings': default_settings
     })
 
+@app.route('/api/update-user-owner-info', methods=['POST'])
+def update_user_owner_info():
+    data = request.json
+    username = data.get('username')
+    owner_id = data.get('owner_id')
+    owner_bot_name = data.get('owner_bot_name')
+    
+    user_settings = load_user_settings()
+    if username not in user_settings:
+        user_settings[username] = {}
+    if owner_id:
+        user_settings[username]['owner_id'] = owner_id
+    if owner_bot_name:
+        user_settings[username]['owner_bot_name'] = owner_bot_name
+    save_user_settings(user_settings)
+    
+    return jsonify({'success': True})
+
+@app.route('/api/get-user-owner-info', methods=['POST'])
+def get_user_owner_info():
+    data = request.json
+    username = data.get('username')
+    
+    user_settings = load_user_settings()
+    default_owner = load_owner_info()
+    
+    return jsonify({
+        'owner_id': user_settings.get(username, {}).get('owner_id', default_owner.get('owner_id', '8213029377')),
+        'owner_bot_name': user_settings.get(username, {}).get('owner_bot_name', default_owner.get('owner_bot_name', '@X1R_RAGNAR'))
+    })
+
 @app.route('/api/update-messages', methods=['POST'])
 def update_messages():
     if not session.get('is_master'):
@@ -494,6 +535,10 @@ def bot_runner_data():
         return jsonify({'error': 'Unauthorized'}), 401
     
     users = load_users()
+    user_settings = load_user_settings()
+    user_messages = load_user_messages()
+    default_messages = load_messages()
+    
     result = []
     for u, d in users.items():
         result.append({
@@ -503,7 +548,11 @@ def bot_runner_data():
             'max_users': d['max_users'],
             'active_users': d['active_users'],
             'is_active': d['is_active'],
-            'expiry_date': d.get('expiry_date')
+            'expiry_date': d.get('expiry_date'),
+            'owner_id': user_settings.get(u, {}).get('owner_id', ''),
+            'owner_bot_name': user_settings.get(u, {}).get('owner_bot_name', ''),
+            'welcome_message': user_messages.get(u, {}).get('welcome_message', default_messages.get('welcome_message', '')),
+            'help_message': user_messages.get(u, {}).get('help_message', default_messages.get('help_message', ''))
         })
     return jsonify({'users': result})
 
