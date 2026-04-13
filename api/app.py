@@ -21,9 +21,9 @@ MASTER_USERNAME = "RAGNAR"
 MASTER_PASSWORD = "RAGNAR-WEB1"
 MASTER_EXPIRY = (datetime.datetime.now() + datetime.timedelta(days=365)).isoformat()
 
-# ========== المفتاح المجاني (مرة واحدة فقط) ==========
+# ========== المفتاح المجاني (لجميع المستخدمين) ==========
 FREE_KEY = "FREE-KEY"
-FREE_KEY_EXPIRY = (datetime.datetime.now() + datetime.timedelta(days=7)).isoformat()
+FREE_KEY_DURATION_DAYS = 7  # مدة الصلاحية 7 أيام من تاريخ التسجيل
 
 # ========== المفتاح الخاص بالبوت الخارجي ==========
 BOT_RUNNER_KEY = "RAGNAR-BOT-RUNNER-KEY-2025"
@@ -68,10 +68,8 @@ def load_keys():
     if os.path.exists(KEYS_FILE):
         with open(KEYS_FILE, 'r') as f:
             return json.load(f)
-    keys = {
-        FREE_KEY: {'used': False, 'expiry_date': FREE_KEY_EXPIRY}
-    }
-    for i in range(1, 50):
+    keys = {}
+    for i in range(1, 51):
         keys[f'KEY-{secrets.token_hex(3).upper()}'] = {'used': False, 'expiry_date': None}
     save_keys(keys)
     return keys
@@ -162,6 +160,29 @@ def register():
     if username in users:
         return jsonify({'success': False, 'error': 'الاسم موجود'})
     
+    # جلب الإعدادات الافتراضية
+    default_settings = load_default_settings()
+    
+    # ✅ معالجة المفتاح المجاني (لجميع المستخدمين)
+    if key == FREE_KEY:
+        # حساب تاريخ الانتهاء (7 أيام من اليوم)
+        expiry_date = (datetime.datetime.now() + datetime.timedelta(days=FREE_KEY_DURATION_DAYS)).isoformat()
+        
+        users[username] = {
+            'password': password,
+            'token': default_settings.get('token', ''),
+            'admin_password': default_settings.get('admin_password', 'X1R_RAGNAR'),
+            'max_users': default_settings.get('max_users', 100),
+            'active_users': [],
+            'is_active': default_settings.get('is_active', False),
+            'expiry_date': expiry_date,
+            'created_at': datetime.datetime.now().isoformat(),
+            'used_free_key': True
+        }
+        save_users(users)
+        return jsonify({'success': True})
+    
+    # ✅ معالجة المفاتيح العادية (مرة واحدة فقط)
     if key not in keys:
         return jsonify({'success': False, 'error': 'مفتاح غير صالح'})
     
@@ -174,9 +195,6 @@ def register():
         if datetime.datetime.now() > expiry:
             return jsonify({'success': False, 'error': 'المفتاح منتهي الصلاحية'})
     
-    # جلب الإعدادات الافتراضية من المالك
-    default_settings = load_default_settings()
-    
     users[username] = {
         'password': password,
         'token': default_settings.get('token', ''),
@@ -185,11 +203,12 @@ def register():
         'active_users': [],
         'is_active': default_settings.get('is_active', False),
         'expiry_date': expiry_date,
-        'created_at': datetime.datetime.now().isoformat()
+        'created_at': datetime.datetime.now().isoformat(),
+        'used_free_key': False
     }
     save_users(users)
     
-    # استهلاك المفتاح (مرة واحدة فقط)
+    # استهلاك المفتاح العادي
     keys[key]['used'] = True
     save_keys(keys)
     
@@ -207,13 +226,13 @@ def login():
         session['user'] = username
         session['is_master'] = True
         keys = load_keys()
-        available_keys = [k for k, v in keys.items() if not v.get('used', False) and k != FREE_KEY]
+        available_keys = [k for k, v in keys.items() if not v.get('used', False)]
         default_settings = load_default_settings()
         return jsonify({
             'success': True, 
             'is_master': True,
             'available_keys': len(available_keys),
-            'total_keys': len([k for k in keys if k != FREE_KEY]),
+            'total_keys': len(keys),
             'owner_expiry': owner_info.get('owner_expiry', MASTER_EXPIRY),
             'default_settings': default_settings
         })
@@ -240,8 +259,6 @@ def get_all_keys():
     result = []
     available_count = 0
     for k, v in keys.items():
-        if k == FREE_KEY:
-            continue
         is_used = v.get('used', False)
         if not is_used:
             available_count += 1
@@ -250,7 +267,7 @@ def get_all_keys():
             'used': is_used,
             'expiry_date': v.get('expiry_date')
         })
-    return jsonify({'keys': result, 'available_count': available_count, 'total': len([k for k in keys if k != FREE_KEY])})
+    return jsonify({'keys': result, 'available_count': available_count, 'total': len(keys)})
 
 @app.route('/api/generate-key', methods=['POST'])
 def generate_key():
@@ -277,9 +294,6 @@ def delete_key():
     
     data = request.json
     key = data.get('key')
-    
-    if key == FREE_KEY:
-        return jsonify({'success': False, 'error': 'لا يمكن حذف المفتاح المجاني'})
     
     keys = load_keys()
     if key not in keys:
@@ -308,8 +322,10 @@ def update_owner_info():
     
     data = request.json
     owner_info = load_owner_info()
-    owner_info['owner_id'] = data.get('owner_id', owner_info.get('owner_id'))
-    owner_info['owner_bot_name'] = data.get('owner_bot_name', owner_info.get('owner_bot_name'))
+    if 'owner_id' in data:
+        owner_info['owner_id'] = data['owner_id']
+    if 'owner_bot_name' in data:
+        owner_info['owner_bot_name'] = data['owner_bot_name']
     save_owner_info(owner_info)
     return jsonify({'success': True})
 
@@ -343,7 +359,7 @@ def update_messages():
 
 @app.route('/api/update-default-settings', methods=['POST'])
 def update_default_settings():
-    """تحديث الإعدادات الافتراضية (يغيرها المالك وتتغير عند جميع المستخدمين)"""
+    """تحديث الإعدادات الافتراضية (تتغير عند جميع المستخدمين)"""
     if not session.get('is_master'):
         return jsonify({'error': 'Unauthorized'}), 401
     
@@ -361,27 +377,31 @@ def update_default_settings():
     
     save_default_settings(default_settings)
     
-    # تحديث جميع المستخدمين بالإعدادات الجديدة
+    # تحديث جميع المستخدمين الحاليين
     users = load_users()
-    changed = False
+    changed_count = 0
     for username, user_data in users.items():
+        updated = False
         if 'token' in data and user_data.get('token') != default_settings['token']:
             user_data['token'] = default_settings['token']
-            changed = True
+            updated = True
         if 'admin_password' in data and user_data.get('admin_password') != default_settings['admin_password']:
             user_data['admin_password'] = default_settings['admin_password']
-            changed = True
+            updated = True
         if 'max_users' in data and user_data.get('max_users') != default_settings['max_users']:
             user_data['max_users'] = default_settings['max_users']
-            changed = True
+            updated = True
         if 'is_active' in data and user_data.get('is_active') != default_settings['is_active']:
             user_data['is_active'] = default_settings['is_active']
-            changed = True
+            updated = True
+        
+        if updated:
+            changed_count += 1
     
-    if changed:
+    if changed_count > 0:
         save_users(users)
     
-    return jsonify({'success': True})
+    return jsonify({'success': True, 'updated_users': changed_count})
 
 @app.route('/api/get-user-data', methods=['POST'])
 def get_user_data():
@@ -407,9 +427,12 @@ def update_user_bot():
     username = data.get('username')
     users = load_users()
     if username in users:
-        users[username]['token'] = data.get('token', users[username]['token'])
-        users[username]['admin_password'] = data.get('admin_password', users[username]['admin_password'])
-        users[username]['max_users'] = data.get('max_users', users[username]['max_users'])
+        if 'token' in data:
+            users[username]['token'] = data['token']
+        if 'admin_password' in data:
+            users[username]['admin_password'] = data['admin_password']
+        if 'max_users' in data:
+            users[username]['max_users'] = data['max_users']
         save_users(users)
         return jsonify({'success': True})
     return jsonify({'success': False})
