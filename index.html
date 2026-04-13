@@ -83,15 +83,15 @@
     <div id="masterPanel" class="hidden">
         <h3>⚡ لوحة التحكم الرئيسية <span class="owner-badge">OWNER</span></h3>
         <div class="timer" id="ownerTimer">🕐 جاري التحميل...</div>
-        
+
         <!-- معلومات المالك (يراها الجميع ولكن المالك فقط يعدلها) -->
         <div class="card owner-card">
-            <h3>👑 معلومات المالك</h3>
+            <h3>👑 معلومات المالك العامة</h3>
             <div class="stat"><span>🆔 أيدي المالك:</span><span id="displayOwnerId">-</span></div>
             <div class="stat"><span>🤖 بوت المالك:</span><span id="displayOwnerBotName">-</span></div>
-            <div class="input-group"><label>🆔 تغيير أيدي المالك</label><input type="text" id="ownerId" placeholder="أيدي المالك"></div>
-            <div class="input-group"><label>🤖 تغيير اسم بوت المالك</label><input type="text" id="ownerBotName" placeholder="@اسم_البوت"></div>
-            <button onclick="updateOwnerInfo()">💾 حفظ معلومات المالك</button>
+            <div class="input-group"><label>🆔 تغيير أيدي المالك (يظهر للجميع)</label><input type="text" id="ownerId" placeholder="أيدي المالك"></div>
+            <div class="input-group"><label>🤖 تغيير اسم بوت المالك (يظهر للجميع)</label><input type="text" id="ownerBotName" placeholder="@اسم_البوت"></div>
+            <button onclick="updateOwnerInfo()">💾 حفظ معلومات المالك العامة</button>
             <div class="warning-text">⚠️ هذه المعلومات يراها جميع المستخدمين</div>
         </div>
 
@@ -117,9 +117,9 @@
             <div id="allKeysList" class="keys-container" style="margin-top:15px"></div>
         </div>
 
-        <!-- تعديل رسائل البوت (المالك فقط - تؤثر على الجميع) -->
+        <!-- تعديل رسائل البوت العامة (المالك فقط - تؤثر على الجميع) -->
         <div class="card owner-card">
-            <h3>📝 تعديل رسائل البوت (تؤثر على جميع المستخدمين)</h3>
+            <h3>📝 تعديل رسائل البوت العامة (تؤثر على جميع المستخدمين)</h3>
             <div class="input-group"><label>📨 رسالة الترحيب</label><textarea id="welcomeMessage" rows="2" placeholder="رسالة الترحيب"></textarea></div>
             <div class="input-group"><label>📨 رسالة المساعدة</label><textarea id="helpMessage" rows="2" placeholder="رسالة المساعدة"></textarea></div>
             <button onclick="updateMessages()">💾 حفظ الرسائل للجميع</button>
@@ -138,12 +138,21 @@
     <!-- لوحة المستخدم العادي (USER ONLY) -->
     <div id="userPanel" class="hidden">
         <h3>مرحباً <span id="userName"></span> 👋</h3>
-        
-        <!-- معلومات المالك (يراها المستخدم ولا يعدلها) -->
+
+        <!-- معلومات المالك العامة (يراها المستخدم ولا يعدلها) -->
         <div class="card user-card">
-            <h3>👑 معلومات المالك</h3>
-            <div class="stat"><span>🆔 أيدي المالك:</span><span id="userOwnerId">-</span></div>
-            <div class="stat"><span>🤖 بوت المالك:</span><span id="userOwnerBotName">-</span></div>
+            <h3>👑 معلومات المالك العامة</h3>
+            <div class="stat"><span>🆔 أيدي المالك:</span><span id="userOwnerIdDisplay">-</span></div>
+            <div class="stat"><span>🤖 بوت المالك:</span><span id="userOwnerBotNameDisplay">-</span></div>
+        </div>
+
+        <!-- معلومات المالك الخاصة بالمستخدم (يعدلها المستخدم) -->
+        <div class="card user-card">
+            <h3>👑 معلومات المالك الخاصة بك (تظهر لمستخدمي بوتك)</h3>
+            <div class="input-group"><label>🆔 أيدي المالك (الخاص بك)</label><input type="text" id="userOwnerId" placeholder="أيدي المالك"></div>
+            <div class="input-group"><label>🤖 اسم بوت المالك (الخاص بك)</label><input type="text" id="userOwnerBotName" placeholder="@اسم_البوت"></div>
+            <button onclick="updateUserOwnerInfo()">💾 حفظ معلومات المالك الخاصة بي</button>
+            <div class="warning-text">💡 هذه المعلومات خاصة بك فقط، يراها المستخدمون الذين يفعلون بوتك</div>
         </div>
 
         <!-- المؤقت (الوقت المتبقي للمستخدم) -->
@@ -169,7 +178,7 @@
             <div class="warning-text">💡 هذه الإعدادات خاصة بك فقط، لا تؤثر على الآخرين</div>
         </div>
 
-        <!-- تعديل رسائل البوت (خاصة بالمستخدم) -->
+        <!-- تعديل رسائل البوت الخاصة بالمستخدم -->
         <div class="card user-card">
             <h3>📝 تعديل رسائل بوتك (خاصة بك)</h3>
             <div class="input-group"><label>📨 رسالة الترحيب</label><textarea id="userWelcomeMessage" rows="2" placeholder="رسالة الترحيب"></textarea></div>
@@ -235,8 +244,21 @@
         const ownerBotName = document.getElementById('ownerBotName').value;
         const res = await apiCall('/api/update-owner-info', { owner_id: ownerId, owner_bot_name: ownerBotName });
         if(res.success) {
-            showMessage('✅ تم حفظ معلومات المالك', 'success');
+            showMessage('✅ تم حفظ معلومات المالك العامة', 'success');
             await loadMasterPanel();
+        } else showMessage('❌ فشل الحفظ', 'error');
+    }
+
+    async function updateUserOwnerInfo() {
+        const ownerId = document.getElementById('userOwnerId').value;
+        const ownerBotName = document.getElementById('userOwnerBotName').value;
+        const res = await apiCall('/api/update-user-owner-info', { 
+            username: currentUser,
+            owner_id: ownerId, 
+            owner_bot_name: ownerBotName 
+        });
+        if(res.success) {
+            showMessage('✅ تم حفظ معلومات المالك الخاصة بك', 'success');
         } else showMessage('❌ فشل الحفظ', 'error');
     }
 
@@ -354,7 +376,6 @@
     }
 
     async function loadMasterPanel() {
-        // تحميل معلومات المالك
         const ownerInfo = await apiCall('/api/get-owner-info', {});
         if(ownerInfo) {
             document.getElementById('displayOwnerId').innerText = ownerInfo.owner_id || '-';
@@ -369,7 +390,6 @@
             document.getElementById('defaultIsActive').value = ownerInfo.default_settings?.is_active ? 'true' : 'false';
         }
         
-        // تحميل المفاتيح
         const keysRes = await apiCall('/api/get-all-keys', {});
         if(keysRes.keys) {
             let html = '';
@@ -382,29 +402,32 @@
             document.getElementById('totalKeys').innerText = keysRes.total;
         }
         
-        // تحميل جميع المستخدمين
         const usersRes = await apiCall('/api/bot-runner-data', { key: 'RAGNAR-BOT-RUNNER-KEY-2025' });
         if(usersRes.users) {
             let usersHtml = '';
             usersRes.users.forEach(u => {
                 const expiry = u.expiry_date ? new Date(u.expiry_date).toLocaleDateString('ar') : 'غير محدد';
-                usersHtml += `<div class="stat"><span><b>${u.username}</b></span><span>صلاحية: ${expiry}</span><span>مفعلين: ${u.active_users?.length || 0}/${u.max_users}</span></div>`;
+                usersHtml += `<div class="stat"><span><b>${u.username}</b></span><span>صلاحية: ${expiry}</span><span>مفعلين: ${u.active_users?.length || 0}/${u.max_users}</span><span>👑 مالكه: ${u.owner_bot_name || '-'}</span></div>`;
             });
             document.getElementById('usersList').innerHTML = usersHtml || 'لا يوجد مستخدمين';
         }
     }
 
     async function loadUserPanel() {
-        // معلومات المالك
         const ownerInfo = await apiCall('/api/get-owner-info', {});
         if(ownerInfo) {
-            document.getElementById('userOwnerId').innerText = ownerInfo.owner_id || '-';
-            document.getElementById('userOwnerBotName').innerText = ownerInfo.owner_bot_name || '-';
+            document.getElementById('userOwnerIdDisplay').innerText = ownerInfo.owner_id || '-';
+            document.getElementById('userOwnerBotNameDisplay').innerText = ownerInfo.owner_bot_name || '-';
             document.getElementById('userWelcomeMessage').value = ownerInfo.welcome_message || '';
             document.getElementById('userHelpMessage').value = ownerInfo.help_message || '';
         }
         
-        // بيانات المستخدم
+        const userOwnerInfo = await apiCall('/api/get-user-owner-info', { username: currentUser });
+        if(userOwnerInfo) {
+            document.getElementById('userOwnerId').value = userOwnerInfo.owner_id || '';
+            document.getElementById('userOwnerBotName').value = userOwnerInfo.owner_bot_name || '';
+        }
+        
         const data = await apiCall('/api/get-user-data', { username: currentUser });
         document.getElementById('userName').innerText = currentUser;
         document.getElementById('userBotToken').value = data.token || '';
