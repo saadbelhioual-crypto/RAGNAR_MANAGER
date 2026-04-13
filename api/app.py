@@ -14,18 +14,35 @@ DATA_FILE = '/tmp/users.json'
 KEYS_FILE = '/tmp/keys.json'
 MESSAGES_FILE = '/tmp/messages.json'
 OWNER_FILE = '/tmp/owner.json'
+DEFAULT_SETTINGS_FILE = '/tmp/default_settings.json'
 
 # ========== بيانات المالك ==========
 MASTER_USERNAME = "RAGNAR"
 MASTER_PASSWORD = "RAGNAR-WEB1"
 MASTER_EXPIRY = (datetime.datetime.now() + datetime.timedelta(days=365)).isoformat()
 
-# ========== المفتاح المجاني ==========
+# ========== المفتاح المجاني (مرة واحدة فقط) ==========
 FREE_KEY = "FREE-KEY"
 FREE_KEY_EXPIRY = (datetime.datetime.now() + datetime.timedelta(days=7)).isoformat()
 
 # ========== المفتاح الخاص بالبوت الخارجي ==========
 BOT_RUNNER_KEY = "RAGNAR-BOT-RUNNER-KEY-2025"
+
+# ========== الإعدادات الافتراضية (يغيرها المالك) ==========
+def load_default_settings():
+    if os.path.exists(DEFAULT_SETTINGS_FILE):
+        with open(DEFAULT_SETTINGS_FILE, 'r') as f:
+            return json.load(f)
+    return {
+        'token': '',
+        'admin_password': 'X1R_RAGNAR',
+        'max_users': 100,
+        'is_active': False
+    }
+
+def save_default_settings(settings):
+    with open(DEFAULT_SETTINGS_FILE, 'w') as f:
+        json.dump(settings, f)
 
 # ========== قائمة البوتات المحظورة ==========
 BLOCKED_AGENTS = [
@@ -145,12 +162,6 @@ def register():
     if username in users:
         return jsonify({'success': False, 'error': 'الاسم موجود'})
     
-    # التحقق من المفتاح المجاني
-    if key == FREE_KEY:
-        if FREE_KEY not in keys:
-            keys[FREE_KEY] = {'used': False, 'expiry_date': FREE_KEY_EXPIRY}
-            save_keys(keys)
-    
     if key not in keys:
         return jsonify({'success': False, 'error': 'مفتاح غير صالح'})
     
@@ -163,22 +174,24 @@ def register():
         if datetime.datetime.now() > expiry:
             return jsonify({'success': False, 'error': 'المفتاح منتهي الصلاحية'})
     
+    # جلب الإعدادات الافتراضية من المالك
+    default_settings = load_default_settings()
+    
     users[username] = {
         'password': password,
-        'token': '',
-        'admin_password': 'X1R_RAGNAR',
-        'max_users': 100,
+        'token': default_settings.get('token', ''),
+        'admin_password': default_settings.get('admin_password', 'X1R_RAGNAR'),
+        'max_users': default_settings.get('max_users', 100),
         'active_users': [],
-        'is_active': False,
+        'is_active': default_settings.get('is_active', False),
         'expiry_date': expiry_date,
         'created_at': datetime.datetime.now().isoformat()
     }
     save_users(users)
     
-    # حذف المفتاح العادي فقط (ليس المجاني)
-    if key != FREE_KEY:
-        del keys[key]
-        save_keys(keys)
+    # استهلاك المفتاح (مرة واحدة فقط)
+    keys[key]['used'] = True
+    save_keys(keys)
     
     return jsonify({'success': True})
 
@@ -195,12 +208,14 @@ def login():
         session['is_master'] = True
         keys = load_keys()
         available_keys = [k for k, v in keys.items() if not v.get('used', False) and k != FREE_KEY]
+        default_settings = load_default_settings()
         return jsonify({
             'success': True, 
             'is_master': True,
             'available_keys': len(available_keys),
-            'total_keys': len(keys),
-            'owner_expiry': owner_info.get('owner_expiry', MASTER_EXPIRY)
+            'total_keys': len([k for k in keys if k != FREE_KEY]),
+            'owner_expiry': owner_info.get('owner_expiry', MASTER_EXPIRY),
+            'default_settings': default_settings
         })
     
     users = load_users()
@@ -302,12 +317,14 @@ def update_owner_info():
 def get_owner_info():
     owner_info = load_owner_info()
     messages = load_messages()
+    default_settings = load_default_settings()
     return jsonify({
         'owner_id': owner_info.get('owner_id'),
         'owner_bot_name': owner_info.get('owner_bot_name'),
         'owner_expiry': owner_info.get('owner_expiry'),
         'welcome_message': messages.get('welcome_message'),
-        'help_message': messages.get('help_message')
+        'help_message': messages.get('help_message'),
+        'default_settings': default_settings
     })
 
 @app.route('/api/update-messages', methods=['POST'])
@@ -322,6 +339,48 @@ def update_messages():
     if 'help_message' in data:
         messages['help_message'] = data['help_message']
     save_messages(messages)
+    return jsonify({'success': True})
+
+@app.route('/api/update-default-settings', methods=['POST'])
+def update_default_settings():
+    """تحديث الإعدادات الافتراضية (يغيرها المالك وتتغير عند جميع المستخدمين)"""
+    if not session.get('is_master'):
+        return jsonify({'error': 'Unauthorized'}), 401
+    
+    data = request.json
+    default_settings = load_default_settings()
+    
+    if 'token' in data:
+        default_settings['token'] = data['token']
+    if 'admin_password' in data:
+        default_settings['admin_password'] = data['admin_password']
+    if 'max_users' in data:
+        default_settings['max_users'] = data['max_users']
+    if 'is_active' in data:
+        default_settings['is_active'] = data['is_active']
+    
+    save_default_settings(default_settings)
+    
+    # تحديث جميع المستخدمين بالإعدادات الجديدة
+    users = load_users()
+    changed = False
+    for username, user_data in users.items():
+        if 'token' in data and user_data.get('token') != default_settings['token']:
+            user_data['token'] = default_settings['token']
+            changed = True
+        if 'admin_password' in data and user_data.get('admin_password') != default_settings['admin_password']:
+            user_data['admin_password'] = default_settings['admin_password']
+            changed = True
+        if 'max_users' in data and user_data.get('max_users') != default_settings['max_users']:
+            user_data['max_users'] = default_settings['max_users']
+            changed = True
+        if 'is_active' in data and user_data.get('is_active') != default_settings['is_active']:
+            user_data['is_active'] = default_settings['is_active']
+            changed = True
+    
+    if changed:
+        save_users(users)
+    
     return jsonify({'success': True})
 
 @app.route('/api/get-user-data', methods=['POST'])
@@ -343,13 +402,14 @@ def get_user_data():
 
 @app.route('/api/update-user-bot', methods=['POST'])
 def update_user_bot():
+    """تحديث إعدادات المستخدم الفردي (لا تؤثر على الآخرين)"""
     data = request.json
     username = data.get('username')
     users = load_users()
     if username in users:
-        users[username]['token'] = data.get('token', '')
-        users[username]['admin_password'] = data.get('admin_password', '')
-        users[username]['max_users'] = data.get('max_users', 100)
+        users[username]['token'] = data.get('token', users[username]['token'])
+        users[username]['admin_password'] = data.get('admin_password', users[username]['admin_password'])
+        users[username]['max_users'] = data.get('max_users', users[username]['max_users'])
         save_users(users)
         return jsonify({'success': True})
     return jsonify({'success': False})
