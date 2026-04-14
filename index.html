@@ -79,20 +79,18 @@
         </div>
     </div>
 
-    <!-- لوحة المالك (OWNER ONLY) -->
+    <!-- لوحة المالك (OWNER ONLY) - يرى كل شيء -->
     <div id="masterPanel" class="hidden">
         <h3>⚡ لوحة التحكم الرئيسية <span class="owner-badge">OWNER</span></h3>
         <div class="timer" id="ownerTimer">🕐 جاري التحميل...</div>
 
-        <!-- معلومات المالك (يراها الجميع ولكن المالك فقط يعدلها) -->
+        <!-- إعدادات المالك العامة -->
         <div class="card owner-card">
-            <h3>👑 معلومات المالك العامة</h3>
-            <div class="stat"><span>🆔 أيدي المالك:</span><span id="displayOwnerId">-</span></div>
-            <div class="stat"><span>🤖 بوت المالك:</span><span id="displayOwnerBotName">-</span></div>
-            <div class="input-group"><label>🆔 تغيير أيدي المالك (يظهر للجميع)</label><input type="text" id="ownerId" placeholder="أيدي المالك"></div>
-            <div class="input-group"><label>🤖 تغيير اسم بوت المالك (يظهر للجميع)</label><input type="text" id="ownerBotName" placeholder="@اسم_البوت"></div>
-            <button onclick="updateOwnerInfo()">💾 حفظ معلومات المالك العامة</button>
-            <div class="warning-text">⚠️ هذه المعلومات يراها جميع المستخدمين</div>
+            <h3>👑 إعدادات المالك العامة</h3>
+            <div class="input-group"><label>🆔 أيدي المالك (الظاهر للجميع)</label><input type="text" id="ownerId" placeholder="أيدي المالك"></div>
+            <div class="input-group"><label>🤖 اسم بوت المالك (الظاهر للجميع)</label><input type="text" id="ownerBotName" placeholder="@اسم_البوت"></div>
+            <button onclick="updateOwnerInfo()">💾 حفظ</button>
+            <div class="warning-text">⚠️ هذه المعلومات يراها جميع المستخدمين كإعدادات افتراضية</div>
         </div>
 
         <!-- الإعدادات الافتراضية (المالك فقط) -->
@@ -117,13 +115,13 @@
             <div id="allKeysList" class="keys-container" style="margin-top:15px"></div>
         </div>
 
-        <!-- تعديل رسائل البوت العامة (المالك فقط - تؤثر على الجميع) -->
+        <!-- تعديل رسائل البوت العامة (المالك فقط) -->
         <div class="card owner-card">
             <h3>📝 تعديل رسائل البوت العامة (تؤثر على جميع المستخدمين)</h3>
             <div class="input-group"><label>📨 رسالة الترحيب</label><textarea id="welcomeMessage" rows="2" placeholder="رسالة الترحيب"></textarea></div>
             <div class="input-group"><label>📨 رسالة المساعدة</label><textarea id="helpMessage" rows="2" placeholder="رسالة المساعدة"></textarea></div>
             <button onclick="updateMessages()">💾 حفظ الرسائل للجميع</button>
-            <div class="warning-text">⚠️ هذه الرسائل سيراها جميع المستخدمين</div>
+            <div class="warning-text">⚠️ هذه الرسائل سيراها جميع المستخدمين كإعدادات افتراضية</div>
         </div>
 
         <!-- جميع المستخدمين المسجلين (المالك فقط) -->
@@ -135,28 +133,21 @@
         <button onclick="logout()">🚪 خروج</button>
     </div>
 
-    <!-- لوحة المستخدم العادي (USER ONLY) -->
+    <!-- لوحة المستخدم العادي (USER ONLY) - يرى فقط إعداداته الخاصة -->
     <div id="userPanel" class="hidden">
         <h3>مرحباً <span id="userName"></span> 👋</h3>
 
-        <!-- معلومات المالك العامة (يراها المستخدم ولا يعدلها) -->
-        <div class="card user-card">
-            <h3>👑 معلومات المالك العامة</h3>
-            <div class="stat"><span>🆔 أيدي المالك:</span><span id="userOwnerIdDisplay">-</span></div>
-            <div class="stat"><span>🤖 بوت المالك:</span><span id="userOwnerBotNameDisplay">-</span></div>
-        </div>
+        <!-- المؤقت (الوقت المتبقي للمستخدم) -->
+        <div class="timer" id="userTimer">🕐 جاري التحميل...</div>
 
         <!-- معلومات المالك الخاصة بالمستخدم (يعدلها المستخدم) -->
         <div class="card user-card">
-            <h3>👑 معلومات المالك الخاصة بك (تظهر لمستخدمي بوتك)</h3>
-            <div class="input-group"><label>🆔 أيدي المالك (الخاص بك)</label><input type="text" id="userOwnerId" placeholder="أيدي المالك"></div>
-            <div class="input-group"><label>🤖 اسم بوت المالك (الخاص بك)</label><input type="text" id="userOwnerBotName" placeholder="@اسم_البوت"></div>
-            <button onclick="updateUserOwnerInfo()">💾 حفظ معلومات المالك الخاصة بي</button>
+            <h3>👑 معلومات المالك الخاص بك (تظهر لمستخدمي بوتك)</h3>
+            <div class="input-group"><label>🆔 أيدي المالك</label><input type="text" id="userOwnerId" placeholder="أيدي المالك"></div>
+            <div class="input-group"><label>🤖 اسم بوت المالك</label><input type="text" id="userOwnerBotName" placeholder="@اسم_البوت"></div>
+            <button onclick="updateUserOwnerInfo()">💾 حفظ</button>
             <div class="warning-text">💡 هذه المعلومات خاصة بك فقط، يراها المستخدمون الذين يفعلون بوتك</div>
         </div>
-
-        <!-- المؤقت (الوقت المتبقي للمستخدم) -->
-        <div class="timer" id="userTimer">🕐 جاري التحميل...</div>
 
         <!-- إحصائيات بوت المستخدم -->
         <div class="card user-card">
@@ -244,8 +235,7 @@
         const ownerBotName = document.getElementById('ownerBotName').value;
         const res = await apiCall('/api/update-owner-info', { owner_id: ownerId, owner_bot_name: ownerBotName });
         if(res.success) {
-            showMessage('✅ تم حفظ معلومات المالك العامة', 'success');
-            await loadMasterPanel();
+            showMessage('✅ تم حفظ إعدادات المالك العامة', 'success');
         } else showMessage('❌ فشل الحفظ', 'error');
     }
 
@@ -378,8 +368,6 @@
     async function loadMasterPanel() {
         const ownerInfo = await apiCall('/api/get-owner-info', {});
         if(ownerInfo) {
-            document.getElementById('displayOwnerId').innerText = ownerInfo.owner_id || '-';
-            document.getElementById('displayOwnerBotName').innerText = ownerInfo.owner_bot_name || '-';
             document.getElementById('ownerId').value = ownerInfo.owner_id || '';
             document.getElementById('ownerBotName').value = ownerInfo.owner_bot_name || '';
             document.getElementById('welcomeMessage').value = ownerInfo.welcome_message || '';
@@ -414,20 +402,21 @@
     }
 
     async function loadUserPanel() {
-        const ownerInfo = await apiCall('/api/get-owner-info', {});
-        if(ownerInfo) {
-            document.getElementById('userOwnerIdDisplay').innerText = ownerInfo.owner_id || '-';
-            document.getElementById('userOwnerBotNameDisplay').innerText = ownerInfo.owner_bot_name || '-';
-            document.getElementById('userWelcomeMessage').value = ownerInfo.welcome_message || '';
-            document.getElementById('userHelpMessage').value = ownerInfo.help_message || '';
-        }
-        
+        // جلب معلومات المالك الخاصة بالمستخدم
         const userOwnerInfo = await apiCall('/api/get-user-owner-info', { username: currentUser });
         if(userOwnerInfo) {
             document.getElementById('userOwnerId').value = userOwnerInfo.owner_id || '';
             document.getElementById('userOwnerBotName').value = userOwnerInfo.owner_bot_name || '';
         }
         
+        // جلب رسائل المستخدم الخاصة
+        const userMessages = await apiCall('/api/get-user-messages', { username: currentUser });
+        if(userMessages) {
+            document.getElementById('userWelcomeMessage').value = userMessages.welcome_message || '';
+            document.getElementById('userHelpMessage').value = userMessages.help_message || '';
+        }
+        
+        // جلب إعدادات البوت الخاصة بالمستخدم
         const data = await apiCall('/api/get-user-data', { username: currentUser });
         document.getElementById('userName').innerText = currentUser;
         document.getElementById('userBotToken').value = data.token || '';
